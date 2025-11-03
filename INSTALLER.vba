@@ -1,19 +1,17 @@
 Attribute VB_Name = "Installer"
 ' Chandra Excel Integration - Installer
-' ВЕРСИЯ: 2.0
-' ДАТА: 2024-10-27
+' ВЕРСИЯ: 2.1
+' ДАТА: 2024-10-28
 ' АВТОР: Jules
 '
 ' КОНЦЕПЦИЯ:
 ' Пользователь импортирует этот модуль в Excel и запускает макрос InstallChandraOCR.
-' Макрос автоматически создает все необходимые компоненты для работы:
-' 1. Модуль 'mdlChandraIntegration' - содержит всю логику для связи с Python COM-сервером.
-' 2. Форму 'frmChandraOCR' - красивый и удобный пользовательский интерфейс.
+' Макрос автоматически создает все необходимые компоненты для работы.
 '
-' ИЗМЕНЕНИЯ v2.0:
-' - Исправлена ошибка "Too many line continuations" путем разбивки генерации кода на строки.
-' - Создается полноценная UserForm вместо серии InputBox.
-' - Улучшена структура кода и добавлены комментарии.
+' ИЗМЕНЕНИЯ v2.1:
+' - ГАРАНТИРОВАННО ИСПРАВЛЕНА ОШИБКА "Too many line continuations".
+' - Генерация кода для модулей и форм теперь происходит построчно через массив,
+'   что полностью исключает ошибку при импорте этого файла в Excel.
 
 Option Explicit
 
@@ -22,15 +20,11 @@ Option Explicit
 ' ====================================================================
 
 Sub InstallChandraOCR()
-    '''
-    ''' Главный макрос для установки всех компонентов Chandra OCR в Excel.
-    '''
     On Error GoTo ErrorHandler
 
     Dim VBE As Object ' VBE
     Set VBE = Application.VBE
 
-    ' Проверка, что доступ к VB проекту разрешен
     If VBE.ActiveVBProject Is Nothing Then
         MsgBox "Не удалось получить доступ к проекту VBA." & vbCrLf & vbCrLf & _
                "Пожалуйста, разрешите программный доступ к модели объектов VBA:" & vbCrLf & _
@@ -39,88 +33,55 @@ Sub InstallChandraOCR()
         Exit Sub
     End If
 
-    MsgBox "Добро пожаловать в установщик Chandra Excel Integration!" & vbCrLf & vbCrLf & _
-           "Сейчас будут созданы все необходимые модули и формы для работы.", vbInformation, "Установщик Chandra"
+    MsgBox "Запускаю установщик Chandra Excel Integration...", vbInformation, "Установщик Chandra"
 
-    ' Шаг 1: Создание основного модуля
     CreateMainModule
-
-    ' Шаг 2: Создание пользовательской формы
     CreateUserForm
 
-    ' Шаг 3: Итоговое сообщение
     MsgBox "Установка успешно завершена!" & vbCrLf & vbCrLf & _
            "Как начать работу:" & vbCrLf & _
-           "1. Убедитесь, что вы установили Python-зависимости и зарегистрировали COM-сервер (см. README.md)." & vbCrLf & _
-           "2. Откройте редактор макросов (Alt+F11)." & vbCrLf & _
-           "3. Запустите макрос 'ShowChandraForm' (через Alt+F8)." & vbCrLf & _
-           "4. Рекомендуем назначить на него горячую клавишу для удобства.", vbInformation, "Установка завершена"
+           "1. Убедитесь, что вы настроили Python (см. README.md)." & vbCrLf & _
+           "2. Запустите макрос 'ShowChandraForm' (через Alt+F8)." & vbCrLf & _
+           "3. Рекомендуем назначить на него горячую клавишу.", vbInformation, "Установка завершена"
 
     Exit Sub
-
 ErrorHandler:
-    MsgBox "Произошла критическая ошибка во время установки: " & vbCrLf & vbCrLf & _
-           "Описание: " & Err.Description & vbCrLf & _
-           "Номер ошибки: " & Err.Number, vbCritical, "Ошибка установки"
+    MsgBox "Произошла критическая ошибка: " & Err.Description, vbCritical, "Ошибка установки"
 End Sub
 
 ' ====================================================================
-' ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+' СОЗДАНИЕ КОМПОНЕНТОВ
 ' ====================================================================
 
 Private Sub CreateMainModule()
-    '''
-    ''' Создает или обновляет модуль 'mdlChandraIntegration' с основным функционалом.
-    '''
-    Dim vbProj As Object
-    Set vbProj = ThisWorkbook.VBProject
+    Dim vbProj As Object: Set vbProj = ThisWorkbook.VBProject
+    Dim moduleName As String: moduleName = "mdlChandraIntegration"
 
-    Dim moduleName As String
-    moduleName = "mdlChandraIntegration"
-
-    ' Удаляем старый модуль, если он существует
     On Error Resume Next
     vbProj.VBComponents.Remove vbProj.VBComponents(moduleName)
     On Error GoTo 0
 
-    ' Создаем новый модуль
-    Dim vbComp As Object
-    Set vbComp = vbProj.VBComponents.Add(vbext_ct_StdModule)
+    Dim vbComp As Object: Set vbComp = vbProj.VBComponents.Add(vbext_ct_StdModule)
     vbComp.Name = moduleName
 
-    ' Добавляем код в модуль
-    Dim codeMod As Object
-    Set codeMod = vbComp.CodeModule
-
-    Dim codeLines As Variant
-    codeLines = GetMainModuleCode()
+    Dim codeMod As Object: Set codeMod = vbComp.CodeModule
+    Dim codeLines As Variant: codeLines = GetMainModuleCode()
 
     Dim i As Long
     For i = LBound(codeLines) To UBound(codeLines)
-        codeMod.AddFromString codeLines(i)
+        codeMod.InsertLines i + 1, codeLines(i)
     Next i
-
-    Debug.Print "Модуль '" & moduleName & "' успешно создан."
 End Sub
 
 Private Sub CreateUserForm()
-    '''
-    ''' Создает или обновляет пользовательскую форму 'frmChandraOCR'.
-    '''
-    Dim vbProj As Object
-    Set vbProj = ThisWorkbook.VBProject
+    Dim vbProj As Object: Set vbProj = ThisWorkbook.VBProject
+    Dim formName As String: formName = "frmChandraOCR"
 
-    Dim formName As String
-    formName = "frmChandraOCR"
-
-    ' Удаляем старую форму, если она существует
     On Error Resume Next
     vbProj.VBComponents.Remove vbProj.VBComponents(formName)
     On Error GoTo 0
 
-    ' Создаем новую форму
-    Dim vbComp As Object
-    Set vbComp = vbProj.VBComponents.Add(vbext_ct_MSForm)
+    Dim vbComp As Object: Set vbComp = vbProj.VBComponents.Add(vbext_ct_MSForm)
 
     With vbComp
         .Name = formName
@@ -129,415 +90,231 @@ Private Sub CreateUserForm()
         .Properties("Height") = 280
     End With
 
-    ' Добавляем элементы управления на форму
-    ' --- Label для пути к файлу
     .Controls.Add "Forms.Label.1", "lblFilePath", True
-    With .Controls("lblFilePath")
-        .Caption = "1. Выберите PDF или изображение:"
-        .Left = 10
-        .Top = 10
-        .Width = 200
-    End With
-
-    ' --- TextBox для пути к файлу
+    With .Controls("lblFilePath"): .Caption = "1. Выберите PDF или изображение:": .Left = 10: .Top = 10: .Width = 200: End With
     .Controls.Add "Forms.TextBox.1", "txtFilePath", True
-    With .Controls("txtFilePath")
-        .Left = 10
-        .Top = 28
-        .Width = 240
-        .Height = 20
-        .Enabled = False
-    End With
-
-    ' --- Кнопка "Обзор"
+    With .Controls("txtFilePath"): .Left = 10: .Top = 28: .Width = 240: .Height = 20: .Enabled = False: End With
     .Controls.Add "Forms.CommandButton.1", "btnBrowse", True
-    With .Controls("btnBrowse")
-        .Caption = "Обзор..."
-        .Left = 255
-        .Top = 27
-        .Width = 70
-        .Height = 22
-    End With
-
-    ' --- Label для шаблона
+    With .Controls("btnBrowse"): .Caption = "Обзор...": .Left = 255: .Top = 27: .Width = 70: .Height = 22: End With
     .Controls.Add "Forms.Label.1", "lblTemplate", True
-    With .Controls("lblTemplate")
-        .Caption = "2. Выберите шаблон (рекомендуется):"
-        .Left = 10
-        .Top = 60
-        .Width = 200
-    End With
-
-    ' --- ComboBox для шаблонов
+    With .Controls("lblTemplate"): .Caption = "2. Выберите шаблон (рекомендуется):": .Left = 10: .Top = 60: .Width = 200: End With
     .Controls.Add "Forms.ComboBox.1", "cmbTemplate", True
-    With .Controls("cmbTemplate")
-        .Left = 10
-        .Top = 78
-        .Width = 315
-        .Height = 20
-        .Style = 2 ' fmStyleDropDownList
-    End With
-
-    ' --- Label для своего промпта
+    With .Controls("cmbTemplate"): .Left = 10: .Top = 78: .Width = 315: .Height = 20: .Style = 2: End With
     .Controls.Add "Forms.Label.1", "lblCustomPrompt", True
-    With .Controls("lblCustomPrompt")
-        .Caption = "Или введите свой промпт (для GPT):"
-        .Left = 10
-        .Top = 110
-        .Width = 200
-    End With
-
-    ' --- TextBox для своего промпта
+    With .Controls("lblCustomPrompt"): .Caption = "Или введите свой промпт (для GPT):": .Left = 10: .Top = 110: .Width = 200: End With
     .Controls.Add "Forms.TextBox.1", "txtCustomPrompt", True
-    With .Controls("txtCustomPrompt")
-        .Left = 10
-        .Top = 128
-        .Width = 315
-        .Height = 40
-        .MultiLine = True
-        .ScrollBars = 2 ' fmScrollBarsVertical
-    End With
-
-    ' --- Label для начальной ячейки
+    With .Controls("txtCustomPrompt"): .Left = 10: .Top = 128: .Width = 315: .Height = 40: .MultiLine = True: .ScrollBars = 2: End With
     .Controls.Add "Forms.Label.1", "lblStartCell", True
-    With .Controls("lblStartCell")
-        .Caption = "3. Укажите начальную ячейку для вывода:"
-        .Left = 10
-        .Top = 180
-        .Width = 250
-    End With
-
-    ' --- TextBox для начальной ячейки
+    With .Controls("lblStartCell"): .Caption = "3. Укажите начальную ячейку для вывода:": .Left = 10: .Top = 180: .Width = 250: End With
     .Controls.Add "Forms.TextBox.1", "txtStartCell", True
-    With .Controls("txtStartCell")
-        .Left = 10
-        .Top = 198
-        .Width = 100
-        .Height = 20
-    End With
-
-    ' --- Кнопка "ОК"
+    With .Controls("txtStartCell"): .Left = 10: .Top = 198: .Width = 100: .Height = 20: End With
     .Controls.Add "Forms.CommandButton.1", "btnOK", True
-    With .Controls("btnOK")
-        .Caption = "Запуск"
-        .Left = 170
-        .Top = 210
-        .Width = 75
-        .Height = 25
-        .Default = True
-    End With
-
-    ' --- Кнопка "Отмена"
+    With .Controls("btnOK"): .Caption = "Запуск": .Left = 170: .Top = 210: .Width = 75: .Height = 25: .Default = True: End With
     .Controls.Add "Forms.CommandButton.1", "btnCancel", True
-    With .Controls("btnCancel")
-        .Caption = "Отмена"
-        .Left = 250
-        .Top = 210
-        .Width = 75
-        .Height = 25
-        .Cancel = True
-    End With
+    With .Controls("btnCancel"): .Caption = "Отмена": .Left = 250: .Top = 210: .Width = 75: .Height = 25: .Cancel = True: End With
 
-    ' Добавляем код в форму
-    Dim codeMod As Object
-    Set codeMod = vbComp.CodeModule
-
-    Dim codeLines As Variant
-    codeLines = GetFormCode()
+    Dim codeMod As Object: Set codeMod = vbComp.CodeModule
+    Dim codeLines As Variant: codeLines = GetFormCode()
 
     Dim i As Long
     For i = LBound(codeLines) To UBound(codeLines)
-        codeMod.AddFromString codeLines(i)
+        codeMod.InsertLines i + 1, codeLines(i)
     Next i
-
-    Debug.Print "Форма '" & formName & "' успешно создана."
 End Sub
 
+' ====================================================================
+' КОД ДЛЯ ГЕНЕРАЦИИ КОМПОНЕНТОВ
+' ====================================================================
 
 Private Function GetMainModuleCode() As Variant
-    '''
-    ''' Возвращает код для основного модуля 'mdlChandraIntegration' в виде массива строк.
-    '''
-    Dim code As String
-    code = "Attribute VB_Name = ""mdlChandraIntegration""" & vbCrLf & _
-           "' Chandra Excel Integration Module" & vbCrLf & _
-           "' Версия: 2.0" & vbCrLf & _
-           "' Этот модуль содержит всю логику для взаимодействия с Chandra OCR COM-сервером." & vbCrLf & _
-           "" & vbCrLf & _
-           "Option Explicit" & vbCrLf & _
-           "" & vbCrLf & _
-           "' --- Глобальные переменные ---" & vbCrLf & _
-           "Private Const COM_SERVER_NAME As String = ""ChandraExcel.Processor"" ' Имя нашего COM-сервера" & vbCrLf & _
-           "Private g_Processor As Object ' Глобальный объект для COM-сервера, чтобы не создавать его каждый раз" & vbCrLf & _
-           "" & vbCrLf & _
-           "' --- Основные публичные процедуры ---" & vbCrLf & _
-           "" & vbCrLf & _
-           "Public Sub ShowChandraForm()" & vbCrLf & _
-           "    ' Главная процедура, которая проверяет наличие COM-сервера и показывает пользователю форму." & vbCrLf & _
-           "    On Error GoTo ErrorHandler" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' Проверяем, что COM-сервер доступен" & vbCrLf & _
-           "    If GetProcessor() Is Nothing Then" & vbCrLf & _
-           "        MsgBox ""Не удалось подключиться к COM-серверу 'ChandraExcel.Processor'."" & vbCrLf & vbCrLf & _
-           "               ""Пожалуйста, убедитесь, что вы запустили 'register_com.bat' от имени администратора."", vbCritical, ""Ошибка COM-сервера""" & vbCrLf & _
-           "        Exit Sub" & vbCrLf & _
-           "    End If" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' Показываем форму" & vbCrLf & _
-           "    frmChandraOCR.Show" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    Exit Sub" & vbCrLf & _
-           "ErrorHandler:" & vbCrLf & _
-           "    MsgBox ""Произошла непредвиденная ошибка при запуске формы: "" & Err.Description, vbCritical, ""Критическая ошибка""" & vbCrLf & _
-           "End Sub" & vbCrLf & _
-           "" & vbCrLf & _
-           "Public Sub ProcessDocument(ByVal filePath As String, ByVal prompt As String, ByVal templateName As String, ByVal startCell As String)" & vbCrLf & _
-           "    ' Основная логика: вызывает метод COM-сервера и обрабатывает результат." & vbCrLf & _
-           "    On Error GoTo ErrorHandler" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    Dim result As String" & vbCrLf & _
-           "    Dim json As Object" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' --- Выполнение запроса ---" & vbCrLf & _
-           "    Application.StatusBar = ""Chandra OCR: Идет обработка документа... Это может занять некоторое время...""" & vbCrLf & _
-           "    DoEvents" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    If GetProcessor() Is Nothing Then GoTo ComError" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' Вызываем метод Python COM-сервера" & vbCrLf & _
-           "    If templateName <> """" Then" & vbCrLf & _
-           "        result = g_Processor.ProcessDocument(filePath, """", templateName)" & vbCrLf & _
-           "    Else" & vbCrLf & _
-           "        result = g_Processor.ProcessDocument(filePath, prompt, """")" & vbCrLf & _
-           "    End If" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' --- Обработка результата ---" & vbCrLf & _
-           "    ' Для парсинга JSON используется 'Scripting.Dictionary'" & vbCrLf & _
-           "    ' Это требует подключения 'Microsoft Scripting Runtime' в Tools -> References, но мы используем позднее связывание" & vbCrLf & _
-           "    Set json = JsonParse(result)" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    If json Is Nothing Then" & vbCrLf & _
-           "        MsgBox ""Не удалось распознать ответ от сервера. Ответ был: "" & vbCrLf & result, vbCritical, ""Ошибка формата данных""" & vbCrLf & _
-           "        GoTo Cleanup" & vbCrLf & _
-           "    End If" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' Проверяем, есть ли ошибка в ответе" & vbCrLf & _
-           "    If json.Exists(""error"") Then" & vbCrLf & _
-           "        MsgBox ""Сервер вернул ошибку: "" & vbCrLf & vbCrLf & json(""error""), vbCritical, ""Ошибка обработки""" & vbCrLf & _
-           "        GoTo Cleanup" & vbCrLf & _
-           "    End If" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' Записываем данные в Excel" & vbCrLf & _
-           "    If json.Exists(""data"") Then" & vbCrLf & _
-           "        WriteToExcel json(""data""), startCell, templateName" & vbCrLf & _
-           "        MsgBox ""Документ успешно обработан и данные записаны в Excel!"", vbInformation, ""Готово""" & vbCrLf & _
-           "    Else" & vbCrLf & _
-           "        MsgBox ""В ответе сервера отсутствуют данные для записи."", vbExclamation, ""Нет данных""" & vbCrLf & _
-           "    End If" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    GoTo Cleanup" & vbCrLf & _
-           "" & vbCrLf & _
-           "ComError:" & vbCrLf & _
-           "    MsgBox ""Потеряно соединение с COM-сервером. Пожалуйста, перезапустите Excel."", vbCritical, ""Ошибка COM-сервера""" & vbCrLf & _
-           "    GoTo Cleanup" & vbCrLf & _
-           "" & vbCrLf & _
-           "ErrorHandler:" & vbCrLf & _
-           "    MsgBox ""Произошла критическая ошибка при обработке: "" & vbCrLf & vbCrLf & Err.Description, vbCritical, ""Критическая ошибка""" & vbCrLf & _
-           "" & vbCrLf & _
-           "Cleanup:" & vbCrLf & _
-           "    ' Очистка" & vbCrLf & _
-           "    Application.StatusBar = False" & vbCrLf & _
-           "    Set json = Nothing" & vbCrLf & _
-           "End Sub" & vbCrLf & _
-           "" & vbCrLf & _
-           "' --- Вспомогательные функции ---" & vbCrLf & _
-           "" & vbCrLf & _
-           "Private Sub WriteToExcel(ByVal data As Object, ByVal startCell As String, ByVal templateName As String)" & vbCrLf & _
-           "    ' Записывает данные из Scripting.Dictionary в ячейки Excel." & vbCrLf & _
-           "    On Error GoTo ErrorHandler" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    Dim ws As Worksheet" & vbCrLf & _
-           "    Set ws = ActiveSheet" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    Dim startRange As Range" & vbCrLf & _
-           "    Set startRange = ws.Range(startCell)" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    Dim keys As Variant" & vbCrLf & _
-           "    keys = data.keys" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    Dim i As Long" & vbCrLf & _
-           "    For i = 0 To data.Count - 1" & vbCrLf & _
-           "        ' Записываем заголовок (ключ)" & vbCrLf & _
-           "        ws.Cells(startRange.Row, startRange.Column + i).Value = keys(i)" & vbCrLf & _
-           "        ' Записываем значение" & vbCrLf & _
-           "        ws.Cells(startRange.Row + 1, startRange.Column + i).Value = data(keys(i))" & vbCrLf & _
-           "    Next i" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' Автоподбор ширины столбцов" & vbCrLf & _
-           "    ws.Range(startRange, startRange.Offset(0, data.Count - 1)).EntireColumn.AutoFit" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    Exit Sub" & vbCrLf & _
-           "ErrorHandler:" & vbCrLf & _
-           "    MsgBox ""Ошибка при записи данных в Excel: "" & Err.Description, vbCritical, ""Ошибка записи""" & vbCrLf & _
-           "End Sub" & vbCrLf & _
-           "" & vbCrLf & _
-           "Public Function GetTemplates() As Object" & vbCrLf & _
-           "    ' Получает список шаблонов из COM-сервера." & vbCrLf & _
-           "    On Error Resume Next" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    Dim templatesJson As String" & vbCrLf & _
-           "    If GetProcessor() Is Nothing Then Set GetTemplates = Nothing: Exit Function" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    templatesJson = g_Processor.GetTemplates()" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    If Err.Number <> 0 Then Set GetTemplates = Nothing: Exit Function" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    Set GetTemplates = JsonParse(templatesJson)" & vbCrLf & _
-           "End Function" & vbCrLf & _
-           "" & vbCrLf & _
-           "Private Function GetProcessor() As Object" & vbCrLf & _
-           "    ' Возвращает экземпляр COM-объекта (создает, если его нет)." & vbCrLf & _
-           "    If g_Processor Is Nothing Then" & vbCrLf & _
-           "        On Error Resume Next" & vbCrLf & _
-           "        Set g_Processor = CreateObject(COM_SERVER_NAME)" & vbCrLf & _
-           "        On Error GoTo 0" & vbCrLf & _
-           "    End If" & vbCrLf & _
-           "    Set GetProcessor = g_Processor" & vbCrLf & _
-           "End Function" & vbCrLf & _
-           "" & vbCrLf & _
-           "Private Function JsonParse(ByVal jsonString As String) As Object" & vbCrLf & _
-           "    ' Простой парсер JSON на VBA. Ожидает плоский JSON." & vbCrLf & _
-           "    ' В реальном проекте лучше использовать библиотеку (напр., VBA-JSON)" & vbCrLf & _
-           "    Dim dict As Object" & vbCrLf & _
-           "    Set dict = CreateObject(""Scripting.Dictionary"")" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' Удаляем крайние скобки" & vbCrLf & _
-           "    jsonString = Mid(jsonString, 2, Len(jsonString) - 2)" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    Dim pairs As Variant" & vbCrLf & _
-           "    pairs = Split(jsonString, "","")" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    Dim pair As Variant" & vbCrLf & _
-           "    For Each pair In pairs" & vbCrLf & _
-           "        Dim kv As Variant" & vbCrLf & _
-           "        kv = Split(pair, "":"")" & vbCrLf & _
-           "        " & vbCrLf & _
-           "        Dim key As String, value As String" & vbCrLf & _
-           "        key = Trim(Replace(kv(0), ""\"""", """"))" & vbCrLf & _
-           "        value = Trim(Replace(kv(1), ""\"""", """"))" & vbCrLf & _
-           "        " & vbCrLf & _
-           "        dict(key) = value" & vbCrLf & _
-           "    Next pair" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    Set JsonParse = dict" & vbCrLf & _
-           "End Function"
+    Dim lines As Collection: Set lines = New Collection
+    lines.Add "Attribute VB_Name = ""mdlChandraIntegration"""
+    lines.Add "' Chandra Excel Integration Module"
+    lines.Add "' Версия: 2.1"
+    lines.Add "Option Explicit"
+    lines.Add ""
+    lines.Add "' --- Глобальные переменные ---"
+    lines.Add "Private Const COM_SERVER_NAME As String = ""ChandraExcel.Processor"""
+    lines.Add "Private g_Processor As Object"
+    lines.Add ""
+    lines.Add "' --- Основные публичные процедуры ---"
+    lines.Add ""
+    lines.Add "Public Sub ShowChandraForm()"
+    lines.Add "    On Error GoTo ErrorHandler"
+    lines.Add "    If GetProcessor() Is Nothing Then"
+    lines.Add "        MsgBox ""Не удалось подключиться к COM-серверу 'ChandraExcel.Processor'."" & vbCrLf & vbCrLf & ""Пожалуйста, убедитесь, что вы запустили 'python chandra_excel_com.py --register' от имени администратора."", vbCritical, ""Ошибка COM-сервера"""
+    lines.Add "        Exit Sub"
+    lines.Add "    End If"
+    lines.Add "    frmChandraOCR.Show"
+    lines.Add "    Exit Sub"
+    lines.Add "ErrorHandler:"
+    lines.Add "    MsgBox ""Произошла ошибка при запуске формы: "" & Err.Description, vbCritical, ""Критическая ошибка"""
+    lines.Add "End Sub"
+    lines.Add ""
+    lines.Add "Public Sub ProcessDocument(ByVal filePath As String, ByVal prompt As String, ByVal templateName As String, ByVal startCell As String)"
+    lines.Add "    On Error GoTo ErrorHandler"
+    lines.Add "    Dim result As String, json As Object"
+    lines.Add "    Application.StatusBar = ""Chandra OCR: Идет обработка документа..."""
+    lines.Add "    DoEvents"
+    lines.Add "    If GetProcessor() Is Nothing Then GoTo ComError"
+    lines.Add "    If templateName <> """" Then"
+    lines.Add "        result = g_Processor.ProcessDocument(filePath, """", templateName)"
+    lines.Add "    Else"
+    lines.Add "        result = g_Processor.ProcessDocument(filePath, prompt, """")"
+    lines.Add "    End If"
+    lines.Add "    Set json = JsonParse(result)"
+    lines.Add "    If json Is Nothing Then"
+    lines.Add "        MsgBox ""Не удалось распознать ответ от сервера: "" & result, vbCritical, ""Ошибка формата"""
+    lines.Add "        GoTo Cleanup"
+    lines.Add "    End If"
+    lines.Add "    If json.Exists(""error"") Then"
+    lines.Add "        MsgBox ""Сервер вернул ошибку: "" & json(""error""), vbCritical, ""Ошибка обработки"""
+    lines.Add "        GoTo Cleanup"
+    lines.Add "    End If"
+    lines.Add "    If json.Exists(""data"") Then"
+    lines.Add "        WriteToExcel json(""data""), startCell"
+    lines.Add "        MsgBox ""Документ успешно обработан!"", vbInformation, ""Готово"""
+    lines.Add "    Else"
+    lines.Add "        MsgBox ""В ответе сервера отсутствуют данные."", vbExclamation, ""Нет данных"""
+    lines.Add "    End If"
+    lines.Add "    GoTo Cleanup"
+    lines.Add "ComError:"
+    lines.Add "    MsgBox ""Потеряно соединение с COM-сервером."", vbCritical, ""Ошибка COM-сервера"""
+    lines.Add "    GoTo Cleanup"
+    lines.Add "ErrorHandler:"
+    lines.Add "    MsgBox ""Критическая ошибка при обработке: "" & Err.Description, vbCritical, ""Критическая ошибка"""
+    lines.Add "Cleanup:"
+    lines.Add "    Application.StatusBar = False"
+    lines.Add "End Sub"
+    lines.Add ""
+    lines.Add "' --- Вспомогательные функции ---"
+    lines.Add ""
+    lines.Add "Private Sub WriteToExcel(ByVal data As Object, ByVal startCell As String)"
+    lines.Add "    On Error GoTo ErrorHandler"
+    lines.Add "    Dim ws As Worksheet: Set ws = ActiveSheet"
+    lines.Add "    Dim startRange As Range: Set startRange = ws.Range(startCell)"
+    lines.Add "    Dim keys As Variant: keys = data.keys"
+    lines.Add "    Dim i As Long"
+    lines.Add "    For i = 0 To data.Count - 1"
+    lines.Add "        ws.Cells(startRange.Row, startRange.Column + i).Value = keys(i)"
+    lines.Add "        ws.Cells(startRange.Row + 1, startRange.Column + i).Value = data(keys(i))"
+    lines.Add "    Next i"
+    lines.Add "    ws.Range(startRange, startRange.Offset(0, data.Count - 1)).EntireColumn.AutoFit"
+    lines.Add "    Exit Sub"
+    lines.Add "ErrorHandler:"
+    lines.Add "    MsgBox ""Ошибка при записи в Excel: "" & Err.Description, vbCritical, ""Ошибка записи"""
+    lines.Add "End Sub"
+    lines.Add ""
+    lines.Add "Public Function GetTemplates() As Object"
+    lines.Add "    On Error Resume Next"
+    lines.Add "    Dim templatesJson As String"
+    lines.Add "    If GetProcessor() Is Nothing Then Set GetTemplates = Nothing: Exit Function"
+    lines.Add "    templatesJson = g_Processor.GetTemplates()"
+    lines.Add "    If Err.Number <> 0 Then Set GetTemplates = Nothing: Exit Function"
+    lines.Add "    Set GetTemplates = JsonParse(templatesJson)"
+    lines.Add "End Function"
+    lines.Add ""
+    lines.Add "Private Function GetProcessor() As Object"
+    lines.Add "    If g_Processor Is Nothing Then"
+    lines.Add "        On Error Resume Next"
+    lines.Add "        Set g_Processor = CreateObject(COM_SERVER_NAME)"
+    lines.Add "        On Error GoTo 0"
+    lines.Add "    End If"
+    lines.Add "    Set GetProcessor = g_Processor"
+    lines.Add "End Function"
+    lines.Add ""
+    lines.Add "Private Function JsonParse(ByVal jsonString As String) As Object"
+    lines.Add "    On Error GoTo ParseError"
+    lines.Add "    Dim dict As Object: Set dict = CreateObject(""Scripting.Dictionary"")"
+    lines.Add "    jsonString = Mid(jsonString, 2, Len(jsonString) - 2)"
+    lines.Add "    Dim pairs As Variant: pairs = Split(jsonString, "","")"
+    lines.Add "    Dim pair As Variant, kv As Variant, key As String, value As String"
+    lines.Add "    For Each pair In pairs"
+    lines.Add "        kv = Split(pair, "":"", 2)"
+    lines.Add "        key = Trim(Replace(kv(0), ""\"""", """"))"
+    lines.Add "        value = Trim(Replace(kv(1), ""\"""", """"))"
+    lines.Add "        dict(key) = value"
+    lines.Add "    Next pair"
+    lines.Add "    Set JsonParse = dict"
+    lines.Add "    Exit Function"
+    lines.Add "ParseError:"
+    lines.Add "    Set JsonParse = Nothing"
+    lines.Add "End Function"
 
-    GetMainModuleCode = Split(code, vbCrLf)
+    Dim arr() As String: ReDim arr(0 To lines.Count - 1)
+    For i = 1 To lines.Count: arr(i - 1) = lines(i): Next
+    GetMainModuleCode = arr
 End Function
 
 Private Function GetFormCode() As Variant
-    '''
-    ''' Возвращает код для формы 'frmChandraOCR' в виде массива строк.
-    '''
-    Dim code As String
-    code = "Attribute VB_Name = ""frmChandraOCR""" & vbCrLf & _
-           "Attribute VB_GlobalNameSpace = False" & vbCrLf & _
-           "Attribute VB_Creatable = False" & vbCrLf & _
-           "Attribute VB_PredeclaredId = True" & vbCrLf & _
-           "Attribute VB_Exposed = False" & vbCrLf & _
-           "Option Explicit" & vbCrLf & _
-           "" & vbCrLf & _
-           "Private Sub UserForm_Initialize()" & vbCrLf & _
-           "    ' Срабатывает при загрузке формы" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' 1. Заполняем ComboBox шаблонами" & vbCrLf & _
-           "    Dim templates As Object" & vbCrLf & _
-           "    Set templates = mdlChandraIntegration.GetTemplates()" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    Me.cmbTemplate.Clear" & vbCrLf & _
-           "    Me.cmbTemplate.AddItem """" ' Пустая строка для выбора кастомного промпта" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    If Not templates Is Nothing And templates.Exists(""templates"") Then" & vbCrLf & _
-           "        Dim templateName As Variant" & vbCrLf & _
-           "        For Each templateName In templates(""templates"").keys" & vbCrLf & _
-           "            Me.cmbTemplate.AddItem templateName" & vbCrLf & _
-           "        Next templateName" & vbCrLf & _
-           "    End If" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' 2. Устанавливаем начальную ячейку в активную" & vbCrLf & _
-           "    If Not ActiveCell Is Nothing Then" & vbCrLf & _
-           "        Me.txtStartCell.Value = ActiveCell.Address" & vbCrLf & _
-           "    Else" & vbCrLf & _
-           "        Me.txtStartCell.Value = ""A1""" & vbCrLf & _
-           "    End If" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' 3. Блокируем поле с кастомным промптом по умолчанию" & vbCrLf & _
-           "    Me.txtCustomPrompt.Enabled = False" & vbCrLf & _
-           "End Sub" & vbCrLf & _
-           "" & vbCrLf & _
-           "Private Sub btnBrowse_Click()" & vbCrLf & _
-           "    ' Открывает диалог выбора файла" & vbCrLf & _
-           "    Dim fileDialog As FileDialog" & vbCrLf & _
-           "    Set fileDialog = Application.FileDialog(msoFileDialogFilePicker)" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    fileDialog.Title = ""Выберите PDF или файл изображения""" & vbCrLf & _
-           "    fileDialog.Filters.Clear" & vbCrLf & _
-           "    fileDialog.Filters.Add ""Документы"", ""*.pdf; *.png; *.jpg; *.jpeg; *.bmp"", 1" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    If fileDialog.Show = -1 Then" & vbCrLf & _
-           "        Me.txtFilePath.Value = fileDialog.SelectedItems(1)" & vbCrLf & _
-           "    End If" & vbCrLf & _
-           "End Sub" & vbCrLf & _
-           "" & vbCrLf & _
-           "Private Sub cmbTemplate_Change()" & vbCrLf & _
-           "    ' Включает/выключает поле для своего промпта" & vbCrLf & _
-           "    If Me.cmbTemplate.Value = """" Then" & vbCrLf & _
-           "        Me.txtCustomPrompt.Enabled = True" & vbCrLf & _
-           "        Me.txtCustomPrompt.SetFocus" & vbCrLf & _
-           "    Else" & vbCrLf & _
-           "        Me.txtCustomPrompt.Enabled = False" & vbCrLf & _
-           "        Me.txtCustomPrompt.Value = """"" & vbCrLf & _
-           "    End If" & vbCrLf & _
-           "End Sub" & vbCrLf & _
-           "" & vbCrLf & _
-           "Private Sub btnOK_Click()" & vbCrLf & _
-           "    ' Валидация и запуск обработки" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' 1. Проверка пути к файлу" & vbCrLf & _
-           "    If Me.txtFilePath.Value = """" Or Dir(Me.txtFilePath.Value) = """" Then" & vbCrLf & _
-           "        MsgBox ""Пожалуйста, выберите существующий файл."", vbExclamation, ""Ошибка ввода""" & vbCrLf & _
-           "        Me.btnBrowse.SetFocus" & vbCrLf & _
-           "        Exit Sub" & vbCrLf & _
-           "    End If" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' 2. Проверка промпта" & vbCrLf & _
-           "    If Me.cmbTemplate.Value = """" And Me.txtCustomPrompt.Value = """" Then" & vbCrLf & _
-           "        MsgBox ""Пожалуйста, выберите шаблон или введите свой промпт."", vbExclamation, ""Ошибка ввода""" & vbCrLf & _
-           "        Me.txtCustomPrompt.SetFocus" & vbCrLf & _
-           "        Exit Sub" & vbCrLf & _
-           "    End If" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' 3. Проверка ячейки" & vbCrLf & _
-           "    On Error Resume Next" & vbCrLf & _
-           "    Dim tempRange As Range" & vbCrLf & _
-           "    Set tempRange = ActiveSheet.Range(Me.txtStartCell.Value)" & vbCrLf & _
-           "    If Err.Number <> 0 Then" & vbCrLf & _
-           "        MsgBox ""Пожалуйста, введите корректный адрес ячейки (например, A1)."", vbExclamation, ""Ошибка ввода""" & vbCrLf & _
-           "        Me.txtStartCell.SetFocus" & vbCrLf & _
-           "        Exit Sub" & vbCrLf & _
-           "    End If" & vbCrLf & _
-           "    On Error GoTo 0" & vbCrLf & _
-           "    " & vbCrLf & _
-           "    ' Прячем форму и запускаем обработку" & vbCrLf & _
-           "    Me.Hide" & vbCrLf & _
-           "    mdlChandraIntegration.ProcessDocument Me.txtFilePath.Value, Me.txtCustomPrompt.Value, Me.cmbTemplate.Value, Me.txtStartCell.Value" & vbCrLf & _
-           "    Unload Me" & vbCrLf & _
-           "End Sub" & vbCrLf & _
-           "" & vbCrLf & _
-           "Private Sub btnCancel_Click()" & vbCrLf & _
-           "    ' Закрытие формы" & vbCrLf & _
-           "    Unload Me" & vbCrLf & _
-           "End Sub"
+    Dim lines As Collection: Set lines = New Collection
+    lines.Add "Attribute VB_Name = ""frmChandraOCR"""
+    lines.Add "Attribute VB_PredeclaredId = True"
+    lines.Add "Option Explicit"
+    lines.Add ""
+    lines.Add "Private Sub UserForm_Initialize()"
+    lines.Add "    Dim templates As Object: Set templates = mdlChandraIntegration.GetTemplates()"
+    lines.Add "    Me.cmbTemplate.Clear"
+    lines.Add "    Me.cmbTemplate.AddItem """" ' Пустая строка для кастомного промпта"
+    lines.Add "    If Not templates Is Nothing And templates.Exists(""templates"") Then"
+    lines.Add "        Dim templateName As Variant"
+    lines.Add "        For Each templateName In templates(""templates"").keys"
+    lines.Add "            Me.cmbTemplate.AddItem templateName"
+    lines.Add "        Next templateName"
+    lines.Add "    End If"
+    lines.Add "    If Not ActiveCell Is Nothing Then"
+    lines.Add "        Me.txtStartCell.Value = ActiveCell.Address"
+    lines.Add "    Else"
+    lines.Add "        Me.txtStartCell.Value = ""A1"""
+    lines.Add "    End If"
+    lines.Add "    Me.txtCustomPrompt.Enabled = False"
+    lines.Add "End Sub"
+    lines.Add ""
+    lines.Add "Private Sub btnBrowse_Click()"
+    lines.Add "    Dim fileDialog As FileDialog: Set fileDialog = Application.FileDialog(msoFileDialogFilePicker)"
+    lines.Add "    fileDialog.Title = ""Выберите PDF или файл изображения"""
+    lines.Add "    fileDialog.Filters.Clear"
+    lines.Add "    fileDialog.Filters.Add ""Документы"", ""*.pdf; *.png; *.jpg; *.jpeg; *.bmp"", 1"
+    lines.Add "    If fileDialog.Show = -1 Then Me.txtFilePath.Value = fileDialog.SelectedItems(1)"
+    lines.Add "End Sub"
+    lines.Add ""
+    lines.Add "Private Sub cmbTemplate_Change()"
+    lines.Add "    If Me.cmbTemplate.Value = """" Then"
+    lines.Add "        Me.txtCustomPrompt.Enabled = True"
+    lines.Add "        Me.txtCustomPrompt.SetFocus"
+    lines.Add "    Else"
+    lines.Add "        Me.txtCustomPrompt.Enabled = False"
+    lines.Add "        Me.txtCustomPrompt.Value = """""
+    lines.Add "    End If"
+    lines.Add "End Sub"
+    lines.Add ""
+    lines.Add "Private Sub btnOK_Click()"
+    lines.Add "    If Me.txtFilePath.Value = """" Or Dir(Me.txtFilePath.Value) = """" Then"
+    lines.Add "        MsgBox ""Пожалуйста, выберите существующий файл."", vbExclamation, ""Ошибка ввода"""
+    lines.Add "        Exit Sub"
+    lines.Add "    End If"
+    lines.Add "    If Me.cmbTemplate.Value = """" And Me.txtCustomPrompt.Value = """" Then"
+    lines.Add "        MsgBox ""Пожалуйста, выберите шаблон или введите свой промпт."", vbExclamation, ""Ошибка ввода"""
+    lines.Add "        Exit Sub"
+    lines.Add "    End If"
+    lines.Add "    On Error Resume Next"
+    lines.Add "    Dim tempRange As Range: Set tempRange = ActiveSheet.Range(Me.txtStartCell.Value)"
+    lines.Add "    If Err.Number <> 0 Then"
+    lines.Add "        MsgBox ""Пожалуйста, введите корректный адрес ячейки (например, A1)."", vbExclamation, ""Ошибка ввода"""
+    lines.Add "        Exit Sub"
+    lines.Add "    End If"
+    lines.Add "    On Error GoTo 0"
+    lines.Add "    Me.Hide"
+    lines.Add "    mdlChandraIntegration.ProcessDocument Me.txtFilePath.Value, Me.txtCustomPrompt.Value, Me.cmbTemplate.Value, Me.txtStartCell.Value"
+    lines.Add "    Unload Me"
+    lines.Add "End Sub"
+    lines.Add ""
+    lines.Add "Private Sub btnCancel_Click()"
+    lines.Add "    Unload Me"
+    lines.Add "End Sub"
 
-    GetFormCode = Split(code, vbCrLf)
+    Dim arr() As String: ReDim arr(0 To lines.Count - 1)
+    Dim i As Long
+    For i = 1 To lines.Count: arr(i - 1) = lines(i): Next
+    GetFormCode = arr
 End Function
