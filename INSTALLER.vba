@@ -121,7 +121,6 @@ End Sub
 
 Private Function GetMainModuleCode() As Variant
     Dim lines As Collection: Set lines = New Collection
-    lines.Add "Attribute VB_Name = ""mdlChandraIntegration"""
     lines.Add "' Chandra Excel Integration Module"
     lines.Add "' Версия: 2.4"
     lines.Add "Option Explicit"
@@ -246,7 +245,6 @@ End Function
 
 Private Function GetFormCode() As Variant
     Dim lines As Collection: Set lines = New Collection
-    lines.Add "Attribute VB_Name = ""frmChandraOCR"""
     lines.Add "Attribute VB_PredeclaredId = True"
     lines.Add "Option Explicit"
     lines.Add ""
