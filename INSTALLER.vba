@@ -1,5 +1,5 @@
 ' Chandra Excel Integration - Installer
-' ВЕРСИЯ: 2.5 - ИСПРАВЛЕНА ОШИБКА СОЗДАНИЯ ФОРМЫ
+' ВЕРСИЯ: 2.6 - ИСПРАВЛЕНА ОШИБКА "Object doesn't support this property or method"
 ' ДАТА: 2024-10-28
 ' АВТОР: Jules
 '
@@ -76,10 +76,10 @@ Private Sub CreateUserForm()
 
     With vbComp
         .Name = formName
-        .Properties("PredeclaredId") = True
-        .Properties("Caption") = "Chandra OCR - Обработка документа"
-        .Properties("Width") = 350
-        .Properties("Height") = 280
+        .Properties("PredeclaredId").Value = True
+        .Properties("Caption").Value = "Chandra OCR - Обработка документа"
+        .Properties("Width").Value = 350
+        .Properties("Height").Value = 280
 
         With .Designer.Controls
             .Add "Forms.Label.1", "lblFilePath", True
@@ -123,7 +123,7 @@ End Sub
 Private Function GetMainModuleCode() As Variant
     Dim lines As Collection: Set lines = New Collection
     lines.Add "' Chandra Excel Integration Module"
-    lines.Add "' Версия: 2.5"
+    lines.Add "' Версия: 2.6"
     lines.Add "Option Explicit"
     lines.Add ""
     lines.Add "Private Const COM_SERVER_NAME As String = ""ChandraExcel.Processor"""
