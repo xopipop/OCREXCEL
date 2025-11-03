@@ -1,5 +1,5 @@
 ' Chandra Excel Integration - Installer
-' ВЕРСИЯ: 2.6 - ИСПРАВЛЕНА ОШИБКА "Object doesn't support this property or method"
+' ВЕРСИЯ: 2.7 - Исправлена ошибка установки свойств формы "Object doesn't support..."
 ' ДАТА: 2024-10-28
 ' АВТОР: Jules
 '
@@ -74,14 +74,15 @@ Private Sub CreateUserForm()
 
     Dim vbComp As Object: Set vbComp = vbProj.VBComponents.Add(3) ' vbext_ct_MSForm
 
-    With vbComp
-        .Name = formName
-        .Properties("PredeclaredId").Value = True
-        .Properties("Caption").Value = "Chandra OCR - Обработка документа"
-        .Properties("Width").Value = 350
-        .Properties("Height").Value = 280
+    vbComp.Name = formName
+    vbComp.Properties("PredeclaredId").Value = True
 
-        With .Designer.Controls
+    With vbComp.Designer
+        .Caption = "Chandra OCR - Обработка документа"
+        .Width = 350
+        .Height = 280
+
+        With .Controls
             .Add "Forms.Label.1", "lblFilePath", True
             With .Item("lblFilePath"): .Caption = "1. Выберите PDF или изображение:": .Left = 10: .Top = 10: .Width = 200: End With
             .Add "Forms.TextBox.1", "txtFilePath", True
@@ -123,7 +124,7 @@ End Sub
 Private Function GetMainModuleCode() As Variant
     Dim lines As Collection: Set lines = New Collection
     lines.Add "' Chandra Excel Integration Module"
-    lines.Add "' Версия: 2.6"
+    lines.Add "' Версия: 2.7"
     lines.Add "Option Explicit"
     lines.Add ""
     lines.Add "Private Const COM_SERVER_NAME As String = ""ChandraExcel.Processor"""
