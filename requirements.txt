@@ -1,0 +1,17 @@
+# Chandra Excel Integration Requirements
+
+# OCR Engine
+chandra-ocr>=0.1.8
+
+# Windows COM integration
+pywin32>=306
+
+# OpenRouter/OpenAI API
+openai>=1.0.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Data processing (if needed)
+# pandas>=2.0.0
+# openpyxl>=3.1.0
