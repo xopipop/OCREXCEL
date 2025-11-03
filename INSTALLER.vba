@@ -1,5 +1,5 @@
 ' Chandra Excel Integration - Installer
-' ВЕРСИЯ: 2.4 - СТАБИЛЬНАЯ И НАДЕЖНАЯ
+' ВЕРСИЯ: 2.5 - ИСПРАВЛЕНА ОШИБКА СОЗДАНИЯ ФОРМЫ
 ' ДАТА: 2024-10-28
 ' АВТОР: Jules
 '
@@ -76,6 +76,7 @@ Private Sub CreateUserForm()
 
     With vbComp
         .Name = formName
+        .Properties("PredeclaredId") = True
         .Properties("Caption") = "Chandra OCR - Обработка документа"
         .Properties("Width") = 350
         .Properties("Height") = 280
@@ -122,7 +123,7 @@ End Sub
 Private Function GetMainModuleCode() As Variant
     Dim lines As Collection: Set lines = New Collection
     lines.Add "' Chandra Excel Integration Module"
-    lines.Add "' Версия: 2.4"
+    lines.Add "' Версия: 2.5"
     lines.Add "Option Explicit"
     lines.Add ""
     lines.Add "Private Const COM_SERVER_NAME As String = ""ChandraExcel.Processor"""
@@ -245,7 +246,6 @@ End Function
 
 Private Function GetFormCode() As Variant
     Dim lines As Collection: Set lines = New Collection
-    lines.Add "Attribute VB_PredeclaredId = True"
     lines.Add "Option Explicit"
     lines.Add ""
     lines.Add "Private Sub UserForm_Initialize()"
