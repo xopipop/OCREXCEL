@@ -1,14 +1,15 @@
 ' Chandra Excel Integration - Installer
-' ВЕРСИЯ: 2.7 - Исправлена ошибка установки свойств формы "Object doesn't support..."
-' ДАТА: 2024-10-28
+' ВЕРСЯ: 2.8 - Исправлена ошибка установки свойств формы "Object doesn't support..."
+' ДАТА: 2024-10-29
 ' АВТОР: Jules
 '
 ' КОНЦЕПЦИЯ:
 ' Пользователь копирует этот код в новый модуль в Excel и запускает макрос InstallChandraOCR.
 '
-' ИЗМЕНЕНИЯ v2.4:
-' - JSON ПАРСЕР ЗАМЕНЕН НА НАДЕЖНУЮ ВЕРСИЮ (RegExp). Корректно обрабатывает запятые.
-' - Все известные ошибки исправлены. Код стабилизирован.
+' ИЗМЕНЕНИЯ v2.8:
+' - Исправлен метод установки свойства PredeclaredId для UserForm, чтобы избежать ошибки
+'   "Object doesn't support this property or method" в 64-разрядных версиях Excel.
+' - Убран отладочный код.
 
 Option Explicit
 
@@ -18,7 +19,6 @@ Option Explicit
 
 Sub InstallChandraOCR()
     On Error GoTo ErrorHandler
-    Debug.Print "Запуск InstallChandraOCR..."
 
     Dim VBE As Object: Set VBE = Application.VBE
     If VBE.ActiveVBProject Is Nothing Then
@@ -28,24 +28,16 @@ Sub InstallChandraOCR()
                "Параметры макросов -> Установить флажок 'Доверять доступ к объектной модели проектов VBA'.", vbCritical, "Ошибка доступа"
         Exit Sub
     End If
-    Debug.Print "Доступ к VBE получен."
 
     MsgBox "Запускаю установщик Chandra Excel Integration...", vbInformation, "Установщик Chandra"
 
-    Debug.Print "Вызов CreateMainModule..."
     CreateMainModule
-    Debug.Print "CreateMainModule завершен."
-
-    Debug.Print "Вызов CreateUserForm..."
     CreateUserForm
-    Debug.Print "CreateUserForm завершен."
 
     MsgBox "Установка успешно завершена!", vbInformation, "Установка завершена"
-    Debug.Print "Установка завершена."
 
     Exit Sub
 ErrorHandler:
-    Debug.Print "ОШИБКА: " & Err.Number & " - " & Err.Description
     MsgBox "Произошла критическая ошибка: " & Err.Description, vbCritical, "Ошибка установки"
 End Sub
 
@@ -54,22 +46,16 @@ End Sub
 ' ====================================================================
 
 Private Sub CreateMainModule()
-    Debug.Print "--- Начало CreateMainModule ---"
     Dim vbProj As Object: Set vbProj = ThisWorkbook.VBProject
     Dim moduleName As String: moduleName = "mdlChandraIntegration"
 
-    Debug.Print "Удаление старого модуля (если существует)..."
     On Error Resume Next
     vbProj.VBComponents.Remove vbProj.VBComponents(moduleName)
     On Error GoTo 0
-    Debug.Print "Старый модуль удален."
 
-    Debug.Print "Добавление нового модуля..."
     Dim vbComp As Object: Set vbComp = vbProj.VBComponents.Add(1) ' vbext_ct_StdModule
     vbComp.Name = moduleName
-    Debug.Print "Модуль '" & moduleName & "' добавлен."
 
-    Debug.Print "Добавление кода в модуль..."
     Dim codeMod As Object: Set codeMod = vbComp.CodeModule
     Dim codeLines As Variant: codeLines = GetMainModuleCode()
 
@@ -77,41 +63,33 @@ Private Sub CreateMainModule()
     For i = LBound(codeLines) To UBound(codeLines)
         codeMod.InsertLines i + 1, codeLines(i)
     Next i
-    Debug.Print "Код добавлен."
-    Debug.Print "--- Конец CreateMainModule ---"
 End Sub
 
 Private Sub CreateUserForm()
-    Debug.Print "--- Начало CreateUserForm ---"
     Dim vbProj As Object: Set vbProj = ThisWorkbook.VBProject
     Dim formName As String: formName = "frmChandraOCR"
 
-    Debug.Print "Удаление старой формы (если существует)..."
     On Error Resume Next
     vbProj.VBComponents.Remove vbProj.VBComponents(formName)
     On Error GoTo 0
-    Debug.Print "Старая форма удалена."
 
-    Debug.Print "Добавление новой формы..."
     Dim vbComp As Object: Set vbComp = vbProj.VBComponents.Add(3) ' vbext_ct_MSForm
-    Debug.Print "Объект формы создан."
-
-    Debug.Print "Установка имени формы..."
     vbComp.Name = formName
-    Debug.Print "Имя формы '" & formName & "' установлено."
 
-    Debug.Print "Установка свойства PredeclaredId..."
-    vbComp.Properties("PredeclaredId").Value = True
-    Debug.Print "Свойство PredeclaredId установлено."
+    ' НАДЕЖНЫЙ СПОСОБ УСТАНОВКИ СВОЙСТВА PredeclaredId
+    Dim prop As Object
+    For Each prop In vbComp.Properties
+        If prop.Name = "PredeclaredId" Then
+            prop.Value = True
+            Exit For
+        End If
+    Next prop
 
-    Debug.Print "Настройка дизайнера формы..."
     With vbComp.Designer
         .Caption = "Chandra OCR - Обработка документа"
         .Width = 350
         .Height = 280
-        Debug.Print "Основные свойства формы (Caption, Width, Height) установлены."
 
-        Debug.Print "Добавление элементов управления..."
         With .Controls
             .Add "Forms.Label.1", "lblFilePath", True
             With .Item("lblFilePath"): .Caption = "1. Выберите PDF или изображение:": .Left = 10: .Top = 10: .Width = 200: End With
@@ -135,12 +113,9 @@ Private Sub CreateUserForm()
             With .Item("btnOK"): .Caption = "Запуск": .Left = 170: .Top = 210: .Width = 75: .Height = 25: .Default = True: End With
             .Add "Forms.CommandButton.1", "btnCancel", True
             With .Item("btnCancel"): .Caption = "Отмена": .Left = 250: .Top = 210: .Width = 75: .Height = 25: .Cancel = True: End With
-            Debug.Print "Все элементы управления добавлены."
         End With
     End With
-    Debug.Print "Настройка дизайнера формы завершена."
 
-    Debug.Print "Добавление кода в форму..."
     Dim codeMod As Object: Set codeMod = vbComp.CodeModule
     Dim codeLines As Variant: codeLines = GetFormCode()
 
@@ -148,9 +123,8 @@ Private Sub CreateUserForm()
     For i = LBound(codeLines) To UBound(codeLines)
         codeMod.InsertLines i + 1, codeLines(i)
     Next i
-    Debug.Print "Код в форму добавлен."
-    Debug.Print "--- Конец CreateUserForm ---"
 End Sub
+
 
 ' ====================================================================
 ' КОД ДЛЯ ГЕНЕРАЦИИ КОМПОНЕНТОВ
@@ -159,7 +133,7 @@ End Sub
 Private Function GetMainModuleCode() As Variant
     Dim lines As Collection: Set lines = New Collection
     lines.Add "' Chandra Excel Integration Module"
-    lines.Add "' Версия: 2.7"
+    lines.Add "' Версия: 2.8"
     lines.Add "Option Explicit"
     lines.Add ""
     lines.Add "Private Const COM_SERVER_NAME As String = ""ChandraExcel.Processor"""
