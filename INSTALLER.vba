@@ -239,6 +239,7 @@ Private Function GetMainModuleCode() As Variant
     lines.Add "End Function"
 
     Dim arr() As String: ReDim arr(0 To lines.Count - 1)
+    Dim i As Long
     For i = 1 To lines.Count: arr(i - 1) = lines(i): Next
     GetMainModuleCode = arr
 End Function
