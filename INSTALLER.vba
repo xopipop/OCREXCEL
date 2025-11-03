@@ -1,6 +1,5 @@
-Attribute VB_Name = "Installer"
 ' Chandra Excel Integration - Installer
-' ВЕРСИЯ: 2.1
+' ВЕРСИЯ: 2.2
 ' ДАТА: 2024-10-28
 ' АВТОР: Jules
 '
